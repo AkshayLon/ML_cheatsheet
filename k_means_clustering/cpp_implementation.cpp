@@ -60,16 +60,22 @@ private:
         }
         std::vector<double> step_size = stepSize(maxVector, minVector, num_centroids-1);
         std::vector<double> current_centroid;
+        std::vector<std::vector<double>> centroid_set;
         for (int centroid_count=0; centroid_count<num_centroids; centroid_count++) {
-            DEBUG_PRINT_SINGLE_VEC(xplusay(minVector, step_size, centroid_count));
-            // centroids->push_back(xplusay(minVector, step_size, centroid_count));
+            current_centroid = xplusay(minVector, step_size, centroid_count);
+            centroid_set.push_back(current_centroid);
         }
+        centroids = std::move(std::make_unique<std::vector<std::vector<double>>>(centroid_set));
     }
 
 public:
     KMeansEngine(int k, int max_iterations, std::vector<std::vector<double>>& sample_data) : k(k), max_iterations(max_iterations) {
         data = std::make_unique<std::vector<std::vector<double>>>(sample_data);
         initializeCentroids(k);
+    }
+
+    std::vector<std::vector<double>> getCentroids() {
+        return *centroids;
     }
 };
 
@@ -81,5 +87,7 @@ int main() {
         {4.0, -10.0, 1.0}
     };
     KMeansEngine kmeans(3, 100, test_data);
+    std::vector<std::vector<double>> c = kmeans.getCentroids();
+    DEBUG_PRINT_VECS(c);
     return 0;
 }
