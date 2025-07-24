@@ -23,8 +23,12 @@ typedef std::vector<std::vector<double>> vector_set;
 class KMeansEngine {
 private:
     int k, max_iterations, dim;
+    bool termination_flag;
     std::unique_ptr<vector_set> data;
     std::unique_ptr<vector_set> centroids = std::make_unique<vector_set>();
+    std::unique_ptr<std::vector<double>> data_centroid_map = std::make_unique<std::vector<double>>(data->size(), 0.0);
+
+    // Helper functions for initialising centroids
 
     const inline std::vector<double> stepSize(const std::vector<double>& x, const std::vector<double>& y, int partitions) {
         std::vector<double> result(dim);
@@ -61,11 +65,45 @@ private:
         }
     }
 
+    // Helper functions for clustering algorithm
+
+    double L2(const std::vector<double>& x, const std::vector<double>& y) {
+        double running_sum;
+        for (int i=0; i<dim; i++) {
+            running_sum += pow(x[i]-y[i], 2);
+        }
+        return running_sum;
+    }
+
+    int findNearestCentroid(const std::vector<double>& datapoint) {
+        double L2_lower_bound = L2(datapoint, centroids->at(0));
+        int nearest_centroid = 0;
+        double current_L2;
+        for (int i=0; i<k; i++) {
+            current_L2 = L2(datapoint, centroids->at(i));
+            if (current_L2 < L2_lower_bound) {
+                L2_lower_bound = current_L2;
+                nearest_centroid = i;
+            }
+        }
+        return nearest_centroid;
+    }
+
+    void updateCentroidMap() {
+        int i=0;
+        for (auto vec=data->begin(); vec!=data->end(); vec++) {
+            data_centroid_map->at(i) = findNearestCentroid(*vec);
+            i++;
+        }
+    }
+
 public:
     KMeansEngine(vector_set dataset, int k, int max_iterations): k(k), max_iterations(max_iterations), data(std::make_unique<vector_set>(dataset)) {
         dim = dataset.size();
+        termination_flag = false;
         vector_set data_bounds = getMinMax();
         initCentroids(data_bounds);
+        updateCentroidMap();
     }
 };
 
