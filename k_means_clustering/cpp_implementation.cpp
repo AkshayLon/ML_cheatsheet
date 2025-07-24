@@ -91,20 +91,62 @@ private:
 
     void updateCentroidMap() {
         int i=0;
+        std::vector<double> current_map(data->size(), 0.0);
         for (auto vec=data->begin(); vec!=data->end(); vec++) {
-            data_centroid_map->at(i) = findNearestCentroid(*vec);
+            current_map[i] = findNearestCentroid(*vec);
             i++;
+        }
+        if (current_map != *data_centroid_map) {
+            *data_centroid_map = current_map;
+        } else {
+            termination_flag = true;
+        }
+    }
+
+    std::vector<double> averageVector(vector_set& presumed_cluster) {
+        double divisor = presumed_cluster.size();
+        std::vector<double> average_container(dim, 0.0);
+        for (auto vec=presumed_cluster.begin(); vec!=presumed_cluster.end(); vec++) {
+            average_container = axplusby(average_container, *vec, (double)(1/divisor), (double)(1/divisor));
+        }
+        return average_container;
+    }
+
+    void updateGivenCentroid(int centroid_num) {
+        // Assumes data_centroid_reference has been updated
+        vector_set cluster;
+        for (int i=0; i<data->size(); i++) {
+            if (data_centroid_map->at(i) == centroid_num) {
+                cluster.push_back(data->at(i));
+            }
+        }
+        (*centroids)[centroid_num] = averageVector(cluster);
+    }
+
+    void updateCentroids() {
+        for (int centroid=0; centroid<k; centroid++) {
+            updateGivenCentroid(centroid);
         }
     }
 
 public:
     KMeansEngine(vector_set dataset, int k, int max_iterations): k(k), max_iterations(max_iterations), data(std::make_unique<vector_set>(dataset)) {
-        dim = dataset.size();
+        dim = dataset[0].size();
         termination_flag = false;
         vector_set data_bounds = getMinMax();
         initCentroids(data_bounds);
-        updateCentroidMap();
     }
+
+    void runClustering() {
+        for (int i=0; i<max_iterations; i++) {
+            updateCentroidMap();
+            if (termination_flag == true) { break; }
+            else { updateCentroids(); }
+        }
+    }
+
+    std::vector<double> getClusterMap() { return (*data_centroid_map); }
+    vector_set getCentroids() { return (*centroids); }
 };
 
 int main() {
@@ -115,5 +157,7 @@ int main() {
         {4.0, -10.0, 1.0}
     };
     KMeansEngine kmeans(test_data, 2, 100);
+    kmeans.runClustering();
+    std::vector<double> final_clusters = kmeans.getClusterMap();
     return 0;
 }
